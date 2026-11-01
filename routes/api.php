@@ -1,0 +1,45 @@
+<?php
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\StudentController;
+use App\Http\Controllers\Api\AttendanceController;
+use App\Http\Controllers\Api\DiaryController;
+use App\Http\Controllers\Api\FeeController;
+use App\Http\Controllers\Api\ExamResultController;
+
+Route::get('/user', function (Request $request) {
+    return $request->user();
+})->middleware('auth:sanctum');
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/students/store', [StudentController::class, 'store']);
+});
+
+// RFID এটেনডেন্স পাঞ্চ রুট
+Route::post('/attendance/punch', [AttendanceController::class, 'punchAttendance']);
+
+// ডিজিটাল ডায়রি সংক্রান্ত রুটসমূহ
+Route::middleware('auth:sanctum')->group(function () {
+    // ডায়েরি এন্ট্রি করার রুট (এর জন্য 'create-diary' পারমিশন লাগবে)
+    Route::post('/diary/store', [DiaryController::class, 'store'])->middleware('permission:create-diary');
+    
+    // নির্দিষ্ট ক্লাসের ডায়েরি দেখার রুট (এর জন্য 'view-diary' পারমিশন লাগবে)
+    Route::get('/diary/{jamatu_class}', [DiaryController::class, 'getDiaryByClass'])->middleware('permission:view-diary');
+});
+
+Route::middleware('auth:sanctum')->group(function () {
+    // নতুন ফি নির্ধারণ বা এন্ট্রি করার রুট ('create-fee' পারমিশন লাগবে)
+    Route::post('/fee/store', [FeeController::class, 'store'])->middleware('permission:create-fee');
+    
+    // নির্দিষ্ট ছাত্রের ফি ও বকেয়া দেখার রুট ('view-fee' পারমিশন লাগবে)
+    Route::get('/fee/student/{student_id}', [FeeController::class, 'getStudentFees'])->middleware('permission:view-fee');
+});
+
+Route::middleware('auth:sanctum')->group(function () {
+    // পরীক্ষার ফলাফল বা নম্বর এন্ট্রি করার রুট ('create-result' পারমিশন লাগবে)
+    Route::post('/exam-result/store', [ExamResultController::class, 'store'])->middleware('permission:create-result');
+    
+    // নির্দিষ্ট ছাত্রের পরীক্ষার ফলাফল দেখার রুট ('view-result' পারমিশন লাগবে)
+    Route::get('/exam-result/student/{student_id}', [ExamResultController::class, 'getStudentResults'])->middleware('permission:view-result');
+});
