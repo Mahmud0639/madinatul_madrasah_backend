@@ -7,6 +7,13 @@ use App\Http\Controllers\Api\AttendanceController;
 use App\Http\Controllers\Api\DiaryController;
 use App\Http\Controllers\Api\FeeController;
 use App\Http\Controllers\Api\ExamResultController;
+use App\Http\Controllers\Api\AIController;
+use App\Http\Controllers\Api\AuthController;
+use Illuminate\Support\Facades\Http;
+
+
+// ফোন নম্বর অথবা ইমেইল দিয়ে লগইন করার রুট
+Route::post('/login', [AuthController::class, 'login']);
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -42,4 +49,34 @@ Route::middleware('auth:sanctum')->group(function () {
     
     // নির্দিষ্ট ছাত্রের পরীক্ষার ফলাফল দেখার রুট ('view-result' পারমিশন লাগবে)
     Route::get('/exam-result/student/{student_id}', [ExamResultController::class, 'getStudentResults'])->middleware('permission:view-result');
+});
+
+// এআই সংক্রান্ত রুটসমূহ
+Route::middleware('auth:sanctum')->group(function () {
+    // ১. অটোমেটিক নোটিশ জেনারেটর
+    Route::post('/ai/generate-notice', [AIController::class, 'generateNotice']);
+
+    // ২. রেজাল্ট অ্যানালাইসিস
+    Route::post('/ai/analyze-result', [AIController::class, 'analyzeStudentResult']);
+
+    // ৩. স্মার্ট চ্যাটবট
+    Route::post('/ai/chatbot', [AIController::class, 'chatbot']);
+
+    // ৪. ভয়েস-টু-টেক্সট (ডিজিটাল ডায়রির জন্য)
+    Route::post('/ai/speech-to-text', [AIController::class, 'speechToText']);
+    // ৫. এআই স্মার্ট ডেটা এন্ট্রি (নতুন যুক্ত হলো)
+    Route::post('/ai/smart-data-entry', [AIController::class, 'smartDataEntry']);
+    Route::post('/ai/smart-fee-entry', [AIController::class, 'smartFeeEntry']);
+});
+
+Route::get('/ai/test-models', function () {
+    $apiKey = config('services.gemini.key');
+    
+    $response = Http::get("https://generativelanguage.googleapis.com/v1beta/models?key={$apiKey}");
+
+    return response()->json([
+        'status' => $response->successful(),
+        'status_code' => $response->status(),
+        'response_data' => $response->json()
+    ]);
 });

@@ -7,4 +7,16 @@ use Illuminate\Database\Eloquent\Model;
 class Attendance extends Model
 {
     //
+    protected $fillable = [
+        'student_id',
+        'date',
+        'in_time',
+        'out_time',
+        'status',
+    ];
+    
+    public function student()
+    {
+        return $this->belongsTo(Student::class, 'student_id');
+    }
 }
