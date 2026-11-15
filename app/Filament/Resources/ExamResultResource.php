@@ -15,7 +15,12 @@ class ExamResultResource extends Resource
     protected static ?string $model = ExamResult::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-document-chart-bar';
+    
+
+    protected static ?string $navigationGroup = 'একাডেমিক ও পরীক্ষা';
     protected static ?string $navigationLabel = 'পরীক্ষার ফলাফল';
+    
+    protected static ?int $navigationSort = 1;
 
     public static function form(Form $form): Form
     {

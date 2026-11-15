@@ -44,6 +44,17 @@ class StudentResource extends Resource
                         ->icon('heroicon-o-user-circle')
                         ->schema([
                             Forms\Components\Grid::make(2)->schema([
+                                   // ছাত্রের ছবি আপলোডের ফিল্ড (উপরে পুরো জায়গা জুড়ে থাকবে)
+                            Forms\Components\FileUpload::make('photo')
+                                ->label('ছাত্রের ছবি (পাসপোর্ট সাইজ)')
+                                ->image()
+                                ->directory('student-photos')
+                                ->imageEditor() // চাইলে ছবি ক্রপ বা এডিট করার ফিচার রাখতে পারেন
+                               //->avatar() // এটি দিলে বক্সটি ছোট ও সুন্দর গোল বা স্কয়ার প্রিভিউ স্টাইল (Choose File টাইপের মতো কম্প্যাক্ট) হয়ে যাবে
+                               // ->circleCropper() // চাইলে গোল ক্রপার ব্যবহার করতে পারেন, অথবা এটি বাদ দিতে পারেন
+                               //->panelLayout('compact') 
+                               ->columnSpanFull(),
+
                                 Forms\Components\TextInput::make('name')
                                     ->required()
                                     ->label('ছাত্রের পুরো নাম')
@@ -54,6 +65,22 @@ class StudentResource extends Resource
                                 Forms\Components\DatePicker::make('date_of_birth')
                                     ->label('জন্ম তারিখ (ঐচ্ছিক)')
                                     ->prefixIcon('heroicon-o-calendar'),
+                                    // রক্তের গ্রুপের ড্রপডাউন ফিল্ড
+                        Forms\Components\Select::make('blood_group')
+                            ->label('রক্তের গ্রুপ')
+                            ->options([
+                                'A+' => 'A+',
+                                'A-' => 'A-',
+                                'B+' => 'B+',
+                                'B-' => 'B-',
+                                'O+' => 'O+',
+                                'O-' => 'O-',
+                                'AB+' => 'AB+',
+                                'AB-' => 'AB-',
+                            ])
+                            ->searchable()
+                            ->placeholder('রক্তের গ্রুপ নির্বাচন করুন')
+                            ->prefixIcon('heroicon-o-heart'),
                             ]),
                         ]),
 
@@ -62,6 +89,7 @@ class StudentResource extends Resource
                         ->description('ক্লাস, রোল ও বিভাগ নির্বাচন')
                         ->icon('heroicon-o-book-open')
                         ->schema([
+             
                             Forms\Components\Grid::make(2)->schema([
                                 
                                 // ক্লাস নির্বাচন (অটো রোল জেনারেটরসহ)

@@ -20,6 +20,7 @@ class MadrasahClassResource extends Resource
     protected static ?string $navigationGroup = 'একাডেমিক ম্যানেজমেন্ট';
     protected static ?int $navigationSort = 2;
 
+
     public static function form(Form $form): Form
     {
         return $form

@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\StudentController;
 use App\Http\Controllers\Api\AttendanceController;
+use App\Http\Controllers\Api\TeacherAttendanceController;
 use App\Http\Controllers\Api\DiaryController;
 use App\Http\Controllers\Api\FeeController;
 use App\Http\Controllers\Api\ExamResultController;
@@ -25,6 +26,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
 // RFID এটেনডেন্স পাঞ্চ রুট
 Route::post('/attendance/punch', [AttendanceController::class, 'punchAttendance']);
+// শিক্ষকদের RFID এটেনডেন্স পাঞ্চ রুট (নতুন যুক্ত হলো)
+Route::post('/teacher/attendance/punch', [TeacherAttendanceController::class, 'punchAttendance']);
 
 // ডিজিটাল ডায়রি সংক্রান্ত রুটসমূহ
 Route::middleware('auth:sanctum')->group(function () {

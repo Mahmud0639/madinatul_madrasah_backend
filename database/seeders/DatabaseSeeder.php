@@ -44,6 +44,7 @@ class DatabaseSeeder extends Seeder
             ['user_id' => $userStudent->id], // ইউজার আইডি দিয়ে চেক করবে
             [
                 'user_id' => $userStudent->id,
+                'name' => 'আব্দুল্লাহ ইসলাম',
                 'roll_number' => '1', // রোল ১
                 'jamatu_class' => 'হিফজ বিভাগ', // আপনার পছন্দমতো জামাত বা ক্লাস দিতে পারেন
                 'section' => 'residential',

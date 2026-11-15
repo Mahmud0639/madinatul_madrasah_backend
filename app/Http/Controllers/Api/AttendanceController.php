@@ -64,7 +64,7 @@ class AttendanceController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'মাদ্রাসায় সফলভাবে প্রবেশ করেছে (In Time Recorded)!',
-                'student_name' => $student->user->name ?? '',
+                'student_name' => $student->name,
                 'data' => $attendance
             ]);
         }

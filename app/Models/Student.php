@@ -12,11 +12,13 @@ class Student extends Model
     protected $fillable = [
         'parent_id',
         'name',
+        'photo',
         'rfid_card_number',
         'roll_number',
         'jamatu_class',
         'section',
         'date_of_birth',
+        'blood_group',
     ];
 
     // অভিভাবক (User) এর সাথে রিলেশন
