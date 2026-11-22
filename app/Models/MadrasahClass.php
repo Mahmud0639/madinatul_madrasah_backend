@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class MadrasahClass extends Model
 {
     //
-    protected $fillable = ['name'];
+    protected $fillable = ['name', 'department_id'];
    
     public function subjects()
     {

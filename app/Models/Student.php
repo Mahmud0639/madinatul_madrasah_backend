@@ -11,6 +11,7 @@ class Student extends Model
 
     protected $fillable = [
         'parent_id',
+        'department_id',
         'name',
         'photo',
         'rfid_card_number',
@@ -41,4 +42,8 @@ class Student extends Model
     {
         return $this->hasMany(ExamResult::class);
     }
+    public function department()
+{
+    return $this->belongsTo(Department::class, 'department_id');
+}
 }

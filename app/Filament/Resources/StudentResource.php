@@ -37,23 +37,20 @@ class StudentResource extends Resource
         return $form
             ->schema([
                 Forms\Components\Wizard::make([
-                    
+
                     // ধাপ ১: ব্যক্তিগত তথ্য (সরাসরি ছাত্রের নাম ও জন্মতারিখ)
                     Forms\Components\Wizard\Step::make('ব্যক্তিগত তথ্য')
                         ->description('ছাত্রের মৌলিক তথ্য')
                         ->icon('heroicon-o-user-circle')
                         ->schema([
                             Forms\Components\Grid::make(2)->schema([
-                                   // ছাত্রের ছবি আপলোডের ফিল্ড (উপরে পুরো জায়গা জুড়ে থাকবে)
-                            Forms\Components\FileUpload::make('photo')
-                                ->label('ছাত্রের ছবি (পাসপোর্ট সাইজ)')
-                                ->image()
-                                ->directory('student-photos')
-                                ->imageEditor() // চাইলে ছবি ক্রপ বা এডিট করার ফিচার রাখতে পারেন
-                               //->avatar() // এটি দিলে বক্সটি ছোট ও সুন্দর গোল বা স্কয়ার প্রিভিউ স্টাইল (Choose File টাইপের মতো কম্প্যাক্ট) হয়ে যাবে
-                               // ->circleCropper() // চাইলে গোল ক্রপার ব্যবহার করতে পারেন, অথবা এটি বাদ দিতে পারেন
-                               //->panelLayout('compact') 
-                               ->columnSpanFull(),
+                                // ছাত্রের ছবি আপলোডের ফিল্ড (উপরে পুরো জায়গা জুড়ে থাকবে)
+                                Forms\Components\FileUpload::make('photo')
+                                    ->label('ছাত্রের ছবি (পাসপোর্ট সাইজ)')
+                                    ->image()
+                                    ->directory('student-photos')
+                                    ->imageEditor()
+                                    ->columnSpanFull(),
 
                                 Forms\Components\TextInput::make('name')
                                     ->required()
@@ -65,60 +62,74 @@ class StudentResource extends Resource
                                 Forms\Components\DatePicker::make('date_of_birth')
                                     ->label('জন্ম তারিখ (ঐচ্ছিক)')
                                     ->prefixIcon('heroicon-o-calendar'),
-                                    // রক্তের গ্রুপের ড্রপডাউন ফিল্ড
-                        Forms\Components\Select::make('blood_group')
-                            ->label('রক্তের গ্রুপ')
-                            ->options([
-                                'A+' => 'A+',
-                                'A-' => 'A-',
-                                'B+' => 'B+',
-                                'B-' => 'B-',
-                                'O+' => 'O+',
-                                'O-' => 'O-',
-                                'AB+' => 'AB+',
-                                'AB-' => 'AB-',
-                            ])
-                            ->searchable()
-                            ->placeholder('রক্তের গ্রুপ নির্বাচন করুন')
-                            ->prefixIcon('heroicon-o-heart'),
+
+                                // রক্তের গ্রুপের ড্রপডাউন ফিল্ড
+                                Forms\Components\Select::make('blood_group')
+                                    ->label('রক্তের গ্রুপ')
+                                    ->options([
+                                        'A+' => 'A+',
+                                        'A-' => 'A-',
+                                        'B+' => 'B+',
+                                        'B-' => 'B-',
+                                        'O+' => 'O+',
+                                        'O-' => 'O-',
+                                        'AB+' => 'AB+',
+                                        'AB-' => 'AB-',
+                                    ])
+                                    ->searchable()
+                                    ->placeholder('রক্তের গ্রুপ নির্বাচন করুন')
+                                    ->prefixIcon('heroicon-o-heart'),
                             ]),
                         ]),
 
-                    // ধাপ ২: একাডেমিক তথ্য (ক্লাস, রোল ও বিভাগ)
+                    // ধাপ ২: একাডেমিক তথ্য (বিভাগ, ক্লাস ও রোল)
                     Forms\Components\Wizard\Step::make('একাডেমিক তথ্য')
                         ->description('ক্লাস, রোল ও বিভাগ নির্বাচন')
                         ->icon('heroicon-o-book-open')
                         ->schema([
-             
                             Forms\Components\Grid::make(2)->schema([
-                                
-                                // ক্লাস নির্বাচন (অটো রোল জেনারেটরসহ)
-                                Forms\Components\Select::make('jamatu_class')
-                                    ->options(fn () => \App\Models\MadrasahClass::pluck('name', 'name')->toArray())
+
+                                Forms\Components\Select::make('department_id')
+                                    ->relationship('department', 'name')
                                     ->required()
                                     ->searchable()
                                     ->preload()
-                                    ->live() 
-                                    ->afterStateUpdated(function (Forms\Set $set, $state) {
+                                    ->live()
+                                    ->afterStateUpdated(function (Forms\Set $set) {
+                                        $set('jamatu_class', null);
+                                        $set('roll_number', null);
+                                    })
+                                    ->label('একাডেমিক বিভাগ')
+                                    ->placeholder('বিভাগ নির্বাচন করুন')
+                                    ->prefixIcon('heroicon-o-building-library'),
+
+                                Forms\Components\Select::make('jamatu_class')
+                                    ->options(function (Forms\Get $get) {
+                                        $departmentId = $get('department_id');
+                                        if (!$departmentId) {
+                                            return [];
+                                        }
+                                        return \App\Models\MadrasahClass::where('department_id', $departmentId)
+                                            ->pluck('name', 'name')
+                                            ->toArray();
+                                    })
+                                    ->required()
+                                    ->searchable()
+                                    ->preload()
+                                    ->live()
+                                    ->afterStateUpdated(function (Forms\Set $set, Forms\Get $get, $state) {
                                         if ($state) {
-                                            $maxRoll = Student::where('jamatu_class', $state)->max('roll_number');
+                                            $departmentId = $get('department_id');
+                                            $maxRoll = Student::where('jamatu_class', $state)
+                                                ->when($departmentId, fn ($q) => $q->where('department_id', $departmentId))
+                                                ->max('roll_number');
                                             $set('roll_number', $maxRoll ? $maxRoll + 1 : 1);
                                         } else {
                                             $set('roll_number', null);
                                         }
                                     })
-                                    ->createOptionForm([
-                                        Forms\Components\TextInput::make('name')
-                                            ->required()
-                                            ->label('নতুন ক্লাসের নাম')
-                                            ->placeholder('যেমন: হেদায়া জামাত')
-                                    ])
-                                    ->createOptionUsing(function (array $data): string {
-                                        $madrasahClass = \App\Models\MadrasahClass::create($data);
-                                        return $madrasahClass->name;
-                                    })
                                     ->label('জামাত / ক্লাস')
-                                    ->placeholder('ক্লাস নির্বাচন করুন')
+                                    ->placeholder('আগে বিভাগ সিলেক্ট করুন')
                                     ->prefixIcon('heroicon-o-academic-cap'),
 
                                 // ক্লাস রোল নম্বর
@@ -132,6 +143,7 @@ class StudentResource extends Resource
                                     ->rules(fn (Forms\Get $get, ?Student $record): array => [
                                         \Illuminate\Validation\Rule::unique('students', 'roll_number')
                                             ->where('jamatu_class', $get('jamatu_class'))
+                                            ->where('department_id', $get('department_id'))
                                             ->ignore($record?->id),
                                     ]),
 
@@ -142,13 +154,14 @@ class StudentResource extends Resource
                                     ])
                                     ->default('non_residential')
                                     ->required()
-                                    ->label('বিভাগ / ধরণ')
+                                    ->label('আবাসিক / অনাবাসিক')
                                     ->prefixIcon('heroicon-o-home'),
 
                                 Forms\Components\TextInput::make('rfid_card_number')
                                     ->label('RFID কার্ড নম্বর')
                                     ->placeholder('স্মার্ট কার্ড আইডি স্ক্যান করুন')
-                                    ->prefixIcon('heroicon-o-qr-code'),
+                                    ->prefixIcon('heroicon-o-qr-code')
+                                    ->columnSpanFull(),
                             ]),
                         ]),
 
@@ -198,16 +211,16 @@ class StudentResource extends Resource
                                 ->createOptionUsing(function (array $data): int {
                                     $data['role'] = 'parent';
                                     $data['password'] = bcrypt($data['password'] ?? '12345678');
-                                    
+
                                     if (empty($data['email'])) {
                                         $data['email'] = $data['phone'] . '@madrasah.local';
                                     }
-                                    
+
                                     $user = User::firstOrCreate(
                                         ['phone' => $data['phone']],
                                         $data
                                     );
-                                    
+
                                     return $user->id;
                                 }),
                         ]),
@@ -246,6 +259,13 @@ class StudentResource extends Resource
                     ->searchable(['phone'])
                     ->icon('heroicon-m-phone'),
 
+                Tables\Columns\TextColumn::make('department.name')
+                    ->label('বিভাগ')
+                    ->searchable()
+                    ->sortable()
+                    ->badge()
+                    ->color('success'),
+
                 Tables\Columns\TextColumn::make('jamatu_class')
                     ->label('জামাত/ক্লাস')
                     ->searchable()
@@ -254,7 +274,7 @@ class StudentResource extends Resource
                     ->color('info'),
 
                 Tables\Columns\TextColumn::make('section')
-                    ->label('বিভাগ')
+                    ->label('ধরণ')
                     ->badge()
                     ->formatStateUsing(fn (string $state): string => match ($state) {
                         'residential' => 'আবাসিক',
@@ -277,6 +297,12 @@ class StudentResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                Tables\Filters\SelectFilter::make('department_id')
+                    ->label('বিভাগ ফিল্টার')
+                    ->relationship('department', 'name')
+                    ->searchable()
+                    ->preload(),
+
                 Tables\Filters\SelectFilter::make('jamatu_class')
                     ->label('জামাত/ক্লাস ফিল্টার')
                     ->options(fn () => Student::distinct()->pluck('jamatu_class', 'jamatu_class')->toArray())
@@ -284,7 +310,7 @@ class StudentResource extends Resource
                     ->preload(),
 
                 Tables\Filters\SelectFilter::make('section')
-                    ->label('বিভাগ ফিল্টার')
+                    ->label('আবাসিক/অনাবাসিক ফিল্টার')
                     ->options([
                         'residential' => 'আবাসিক',
                         'non_residential' => 'অনাবাসিক',

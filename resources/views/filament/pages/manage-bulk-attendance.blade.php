@@ -2,7 +2,7 @@
     <form wire:submit="submit" class="space-y-6">
         {{ $this->form }}
 
-        @if(!empty($this->data['jamatu_class']))
+        @if(!empty($this->data['department_id']) && !empty($this->data['jamatu_class']))
             @if(count($students) > 0)
                 <div class="bg-white dark:bg-gray-900 shadow-sm rounded-xl p-6 border border-gray-200 dark:border-gray-800">
                     <div class="flex items-center justify-between mb-4">
@@ -18,7 +18,7 @@
                             <thead>
                                 <tr class="border-b dark:border-gray-700 text-gray-600 dark:text-gray-400 text-sm">
                                     <th class="py-3 px-3">রোল নং</th>
-                                    <th class="py-3 px-3">ছাত্র-ছাত্রীর বিবরণ (ছবি ও নাম)</th> <!-- হেডার পরিবর্তন -->
+                                    <th class="py-3 px-3">ছাত্র-ছাত্রীর বিবরণ (ছবি ও নাম)</th>
                                     <th class="py-3 px-3">উপস্থিতি স্ট্যাটাস</th>
                                     <th class="py-3 px-3">প্রবেশের সময় (In-Time)</th>
                                     <th class="py-3 px-3">প্রস্থানের সময় (Out-Time)</th>
@@ -30,13 +30,11 @@
                                         <td class="py-3 px-3 font-semibold text-gray-700 dark:text-gray-300">
                                             {{ $student->roll_number ?? 'N/A' }}
                                         </td>
-                                        <!-- ছবি ও নাম একসাথে সুন্দরভাবে প্রদর্শনের জন্য -->
                                         <td class="py-3 px-3">
                                             <div class="flex items-center gap-3">
                                                 @if($student->photo)
                                                     <img src="{{ asset('storage/' . $student->photo) }}" alt="{{ $student->name }}" class="w-10 h-10 rounded-full object-cover border border-gray-200 dark:border-gray-700 shadow-sm">
                                                 @else
-                                                    <!-- ছবি না থাকলে ডিফল্ট একটি এভেতার বা আইকন দেখাবে -->
                                                     <div class="flex items-center justify-center w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 font-bold text-sm">
                                                         {{ mb_substr($student->name, 0, 1) }}
                                                     </div>
@@ -81,7 +79,6 @@
                     </div>
                 </div>
             @else
-                <!-- যদি এই তারিখে কোনো হাজিরা রেকর্ড না থাকে -->
                 <div class="flex flex-col items-center justify-center py-16 px-6 bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 text-center space-y-4">
                     <div class="flex items-center justify-center w-14 h-14 bg-amber-50 dark:bg-amber-900/30 rounded-full text-amber-500">
                         <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -104,8 +101,8 @@
                         <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.82-2.715C16.418 16.723 16 17.33 16 18c0 .243.023.481.069.72M12 14.25a4.5 4.5 0 100-9 4.5 4.5 0 000 9zm0 0c-3.791 0-7.14 1.875-9.13 4.795M19.5 10.5h.008v.008h-.008V10.5z"></path>
                     </svg>
                 </div>
-                <h3 class="text-base font-semibold text-gray-800 dark:text-white">কোনো জামাত বা ক্লাস নির্বাচন করা হয়নি</h3>
-                <p class="text-sm text-gray-500 dark:text-gray-400">দয়া করে ওপরের ড্রপডাউন থেকে একটি জামাত বা ক্লাস নির্বাচন করুন।</p>
+                <h3 class="text-base font-semibold text-gray-800 dark:text-white">বিভাগ ও জামাত/ক্লাস নির্বাচন করা হয়নি</h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400">দয়া করে ওপরের ড্রপডাউন থেকে বিভাগ এবং জামাত বা ক্লাস নির্বাচন করুন।</p>
             </div>
         @endif
     </form>

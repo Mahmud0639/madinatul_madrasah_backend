@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Models\Department;
 use App\Models\MadrasahClass;
 use App\Models\Student;
 use App\Models\Attendance;
@@ -16,8 +17,6 @@ class ManageBulkAttendance extends Page implements HasForms
 {
     use InteractsWithForms;
 
-    // protected static ?string $navigationIcon = 'heroicon-o-clipboard-document-check';
-    // protected static ?string $navigationLabel = 'বাল্ক হাজিরা (Bulk Attendance)';
     protected static ?string $slug = 'bulk-attendance';
     protected static string $view = 'filament.pages.manage-bulk-attendance';
 
@@ -25,7 +24,6 @@ class ManageBulkAttendance extends Page implements HasForms
     protected static ?string $navigationLabel = 'বাল্ক হাজিরা (ছাত্র-ছাত্রী)';
     protected static ?string $navigationIcon = 'heroicon-o-bolt';
     protected static ?int $navigationSort = 3;
-    
 
     public ?array $data = [];
     public $students = [];
@@ -49,9 +47,33 @@ class ManageBulkAttendance extends Page implements HasForms
     {
         return $form
             ->schema([
+                Forms\Components\Select::make('department_id')
+                    ->label('বিভাগ নির্বাচন করুন')
+                    ->options(Department::pluck('name', 'id')->toArray())
+                    ->searchable()
+                    ->preload()
+                    ->required()
+                    ->live()
+                    ->afterStateUpdated(function (Forms\Set $set) {
+                        $set('jamatu_class', null);
+                        $this->students = [];
+                        $this->attendanceExistsForDate = false;
+                    }),
+
                 Forms\Components\Select::make('jamatu_class')
                     ->label('জামাত/ক্লাস নির্বাচন করুন')
-                    ->options(MadrasahClass::pluck('name', 'name')->toArray())
+                    ->options(function (Forms\Get $get) {
+                        $departmentId = $get('department_id');
+                        if (!$departmentId) {
+                            return [];
+                        }
+                        return MadrasahClass::where('department_id', $departmentId)
+                            ->pluck('name', 'name')
+                            ->toArray();
+                    })
+                    ->placeholder('আগে বিভাগ সিলেক্ট করুন')
+                    ->searchable()
+                    ->preload()
                     ->required()
                     ->live()
                     ->afterStateUpdated(fn () => $this->loadStudents()),
@@ -59,7 +81,7 @@ class ManageBulkAttendance extends Page implements HasForms
                 Forms\Components\DatePicker::make('date')
                     ->label('তারিখ')
                     ->default(now())
-                    ->maxDate(now()) // ভবিষ্যতের তারিখ বন্ধ করা
+                    ->maxDate(now())
                     ->required()
                     ->live()
                     ->afterStateUpdated(fn () => $this->loadStudents()),
@@ -83,14 +105,17 @@ class ManageBulkAttendance extends Page implements HasForms
 
     public function loadStudents()
     {
+        $departmentId = $this->data['department_id'] ?? null;
         $class = $this->data['jamatu_class'] ?? null;
         $date = $this->data['date'] ?? now()->format('Y-m-d');
         $defaultIn = $this->data['default_in_time'] ?? '08:00:00';
         $defaultOut = $this->data['default_out_time'] ?? '14:00:00';
 
         if ($class) {
-            // ক্লাসের মোট ছাত্র নিয়ে আসা
-            $allStudents = Student::where('jamatu_class', $class)->get();
+            $allStudents = Student::where('jamatu_class', $class)
+                ->when($departmentId, fn ($q) => $q->where('department_id', $departmentId))
+                ->orderBy('roll_number', 'asc')
+                ->get();
 
             if ($allStudents->isEmpty()) {
                 $this->students = [];
@@ -98,18 +123,15 @@ class ManageBulkAttendance extends Page implements HasForms
                 return;
             }
 
-            // চেক করা যাক এই নির্দিষ্ট তারিখে এই ক্লাসের কোনো হাজিরা রেকর্ড ডেটাবেজে আছে কি না
             $existingAttendances = Attendance::where('date', $date)
                 ->whereIn('student_id', $allStudents->pluck('id'))
                 ->get()
                 ->keyBy('student_id');
 
-            // যদি এই তারিখে কোনো হাজিরা রেকর্ড না থাকে
             if ($existingAttendances->isEmpty()) {
-                $this->students = []; // কোনো তালিকা দেখাবে না, খালি থাকবে
+                $this->students = [];
                 $this->attendanceExistsForDate = false;
             } else {
-                // যদি রেকর্ড থাকে, তবেই শুধু ছাত্র তালিকা ও ওই তারিখের ডাটা লোড হবে (এডিট করার জন্য)
                 $this->students = $allStudents;
                 $this->attendanceExistsForDate = true;
 
@@ -127,15 +149,19 @@ class ManageBulkAttendance extends Page implements HasForms
         }
     }
 
-    // নতুন হাজিরা এন্ট্রি করার জন্য বা ফাঁকা দিনে সাবমিট করার সময় সক্রিয় করার ফাংশন
     public function createNewAttendanceForDate()
     {
+        $departmentId = $this->data['department_id'] ?? null;
         $class = $this->data['jamatu_class'] ?? null;
         $defaultIn = $this->data['default_in_time'] ?? '08:00:00';
         $defaultOut = $this->data['default_out_time'] ?? '14:00:00';
 
         if ($class) {
-            $allStudents = Student::where('jamatu_class', $class)->get();
+            $allStudents = Student::where('jamatu_class', $class)
+                ->when($departmentId, fn ($q) => $q->where('department_id', $departmentId))
+                ->orderBy('roll_number', 'asc')
+                ->get();
+
             $this->students = $allStudents;
             $this->attendanceExistsForDate = false;
 
@@ -166,7 +192,7 @@ class ManageBulkAttendance extends Page implements HasForms
 
         if (!$class || empty($this->students)) {
             Notification::make()
-                ->title('দয়া করে সঠিক ক্লাস সিলেক্ট করুন এবং ছাত্র তালিকা চেক করুন।')
+                ->title('দয়া করে বিভাগ ও ক্লাস সিলেক্ট করুন এবং ছাত্র তালিকা চেক করুন।')
                 ->danger()
                 ->send();
             return;
