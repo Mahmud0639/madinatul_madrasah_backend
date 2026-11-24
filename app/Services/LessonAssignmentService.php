@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\DailyLesson;
 use App\Models\LessonStudentStatus;
+use App\Models\MadrasahClass;
 use App\Models\Student;
 
 class LessonAssignmentService
@@ -13,7 +14,6 @@ class LessonAssignmentService
         if ($lesson->target_type === 'specific_students') {
             $targetIds = collect($selectedStudentIds)->map(fn ($id) => (int) $id)->unique()->values();
 
-            // যেসব ছাত্রকে আর রাখা হয়নি তাদের স্ট্যাটাস মুছে ফেলা
             LessonStudentStatus::where('daily_lesson_id', $lesson->id)
                 ->whereNotIn('student_id', $targetIds)
                 ->delete();
@@ -33,11 +33,17 @@ class LessonAssignmentService
             return;
         }
 
-        // 'all_class' হলে ওই ক্লাসের সব ছাত্রের জন্য স্ট্যাটাস নিশ্চিত করা
-        $studentQuery = Student::query()->where('madrasah_class_id', $lesson->madrasah_class_id);
+        $studentQuery = Student::query();
 
         if (!empty($lesson->department_id)) {
             $studentQuery->where('department_id', $lesson->department_id);
+        }
+
+        if (!empty($lesson->madrasah_class_id)) {
+            $className = MadrasahClass::find($lesson->madrasah_class_id)?->name;
+            if ($className) {
+                $studentQuery->where('jamatu_class', $className);
+            }
         }
 
         $studentIds = $studentQuery->pluck('id');

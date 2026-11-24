@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\DailyLessonResource\Pages;
 use App\Models\DailyLesson;
+use App\Models\Department;
 use App\Models\LessonStudentStatus;
 use App\Models\LessonTemplate;
 use App\Models\MadrasahClass;
@@ -31,11 +32,33 @@ class DailyLessonResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\Section::make('ক্লাস, বিষয় ও সময়সূচি')
+                Forms\Components\Section::make('বিভাগ, ক্লাস, বিষয় ও সময়সূচি')
                     ->schema([
+                        Forms\Components\Select::make('department_id')
+                            ->label('বিভাগ')
+                            ->options(fn () => Department::pluck('name', 'id')->toArray())
+                            ->searchable()
+                            ->preload()
+                            ->live()
+                            ->afterStateUpdated(function (callable $set) {
+                                $set('madrasah_class_id', null);
+                                $set('subject_id', null);
+                                $set('subject_name', null);
+                                $set('target_student_ids', []);
+                            }),
+
                         Forms\Components\Select::make('madrasah_class_id')
                             ->label('ক্লাস / জামাত')
-                            ->relationship('madrasahClass', 'name')
+                            ->options(function (callable $get) {
+                                $departmentId = $get('department_id');
+                                $query = MadrasahClass::query();
+
+                                if ($departmentId) {
+                                    $query->where('department_id', $departmentId);
+                                }
+
+                                return $query->pluck('name', 'id')->toArray();
+                            })
                             ->searchable()
                             ->preload()
                             ->live()
@@ -197,12 +220,22 @@ class DailyLessonResource extends Resource
                             ->required(fn (callable $get) => $get('target_type') === 'specific_students')
                             ->options(function (callable $get) {
                                 $classId = $get('madrasah_class_id');
-                                if (!$classId) {
-                                    return [];
+                                $departmentId = $get('department_id');
+
+                                $query = Student::query();
+
+                                if ($departmentId) {
+                                    $query->where('department_id', $departmentId);
                                 }
-                                return Student::where('madrasah_class_id', $classId)
-                                    ->pluck('name', 'id')
-                                    ->toArray();
+
+                                if ($classId) {
+                                    $className = MadrasahClass::find($classId)?->name;
+                                    if ($className) {
+                                        $query->where('jamatu_class', $className);
+                                    }
+                                }
+
+                                return $query->pluck('name', 'id')->toArray();
                             }),
                     ]),
             ]);
@@ -252,6 +285,10 @@ class DailyLessonResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                Tables\Filters\SelectFilter::make('department_id')
+                    ->label('বিভাগ অনুযায়ী ফিল্টার')
+                    ->options(fn () => Department::pluck('name', 'id')->toArray()),
+
                 Tables\Filters\SelectFilter::make('madrasah_class_id')
                     ->label('ক্লাস অনুযায়ী ফিল্টার')
                     ->relationship('madrasahClass', 'name'),

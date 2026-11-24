@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\FeeController;
 use App\Http\Controllers\Api\ExamResultController;
 use App\Http\Controllers\Api\AIController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\GuardianLessonController;
 use Illuminate\Support\Facades\Http;
 
 
@@ -82,4 +83,11 @@ Route::get('/ai/test-models', function () {
         'status_code' => $response->status(),
         'response_data' => $response->json()
     ]);
+});
+
+Route::middleware('auth:sanctum')->prefix('guardian')->group(function () {
+    Route::get('/children', [GuardianLessonController::class, 'children']);
+    Route::get('/students/{studentId}/lessons', [GuardianLessonController::class, 'index']);
+    Route::post('/students/{studentId}/lessons/{lessonId}/seen', [GuardianLessonController::class, 'markSeen']);
+    Route::post('/students/{studentId}/lessons/{lessonId}/complete', [GuardianLessonController::class, 'markCompleted']);
 });
