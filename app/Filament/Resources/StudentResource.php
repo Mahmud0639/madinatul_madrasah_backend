@@ -2,18 +2,23 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\StudentResource\RelationManagers\AttendancesRelationManager;
-use App\Filament\Resources\StudentResource\RelationManagers\FeesRelationManager;
-use App\Filament\Resources\StudentResource\RelationManagers\ExamResultsRelationManager;
 use App\Filament\Resources\StudentResource\Pages;
+use App\Filament\Resources\StudentResource\RelationManagers\AttendancesRelationManager;
+use App\Filament\Resources\StudentResource\RelationManagers\ExamResultsRelationManager;
+use App\Filament\Resources\StudentResource\RelationManagers\FeesRelationManager;
+use App\Models\ExamGradingSetting;
 use App\Models\Student;
 use App\Models\User;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Infolists;
+use Filament\Infolists\Infolist;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\HtmlString;
 
 class StudentResource extends Resource
 {
@@ -44,7 +49,6 @@ class StudentResource extends Resource
                         ->icon('heroicon-o-user-circle')
                         ->schema([
                             Forms\Components\Grid::make(2)->schema([
-                                // ছাত্রের ছবি আপলোডের ফিল্ড (উপরে পুরো জায়গা জুড়ে থাকবে)
                                 Forms\Components\FileUpload::make('photo')
                                     ->label('ছাত্রের ছবি (পাসপোর্ট সাইজ)')
                                     ->image()
@@ -63,7 +67,6 @@ class StudentResource extends Resource
                                     ->label('জন্ম তারিখ (ঐচ্ছিক)')
                                     ->prefixIcon('heroicon-o-calendar'),
 
-                                // রক্তের গ্রুপের ড্রপডাউন ফিল্ড
                                 Forms\Components\Select::make('blood_group')
                                     ->label('রক্তের গ্রুপ')
                                     ->options([
@@ -106,9 +109,10 @@ class StudentResource extends Resource
                                 Forms\Components\Select::make('jamatu_class')
                                     ->options(function (Forms\Get $get) {
                                         $departmentId = $get('department_id');
-                                        if (!$departmentId) {
+                                        if (! $departmentId) {
                                             return [];
                                         }
+
                                         return \App\Models\MadrasahClass::where('department_id', $departmentId)
                                             ->pluck('name', 'name')
                                             ->toArray();
@@ -132,7 +136,6 @@ class StudentResource extends Resource
                                     ->placeholder('আগে বিভাগ সিলেক্ট করুন')
                                     ->prefixIcon('heroicon-o-academic-cap'),
 
-                                // ক্লাস রোল নম্বর
                                 Forms\Components\TextInput::make('roll_number')
                                     ->required()
                                     ->numeric()
@@ -165,7 +168,7 @@ class StudentResource extends Resource
                             ]),
                         ]),
 
-                    // ধাপ ৩: অভিভাবক তথ্য (শুধু অভিভাবক সিলেক্ট বা নতুন তৈরি করার পপআপ)
+                    // ধাপ ৩: অভিভাবক তথ্য
                     Forms\Components\Wizard\Step::make('অভিভাবক তথ্য')
                         ->description('অভিভাবক বা ফি প্রদানকারী নির্বাচন')
                         ->icon('heroicon-o-users')
@@ -236,9 +239,154 @@ class StudentResource extends Resource
             ]);
     }
 
+    public static function infolist(Infolist $infolist): Infolist
+    {
+        return $infolist
+            ->schema([
+                Infolists\Components\Section::make('শিক্ষার্থীর পরিচিতি ও একাডেমিক তথ্য')
+                    ->columns(4)
+                    ->schema([
+                        Infolists\Components\ImageEntry::make('photo')
+                            ->label('ছবি')
+                            ->circular()
+                            ->defaultImageUrl(fn (Student $record): string => 'https://ui-avatars.com/api/?name=' . urlencode($record->name) . '&background=f59e0b&color=fff'),
+
+                        Infolists\Components\Group::make([
+                            Infolists\Components\TextEntry::make('name')
+                                ->label('ছাত্রের পুরো নাম')
+                                ->weight('bold')
+                                ->size(Infolists\Components\TextEntry\TextEntrySize::Large),
+
+                            Infolists\Components\TextEntry::make('roll_number')
+                                ->label('ক্লাস রোল')
+                                ->badge()
+                                ->color('primary'),
+
+                            Infolists\Components\TextEntry::make('department.name')
+                                ->label('একাডেমিক বিভাগ')
+                                ->badge()
+                                ->color('success'),
+                        ]),
+
+                        Infolists\Components\Group::make([
+                            Infolists\Components\TextEntry::make('jamatu_class')
+                                ->label('জামাত / ক্লাস')
+                                ->badge()
+                                ->color('info'),
+
+                            Infolists\Components\TextEntry::make('section')
+                                ->label('আবাসিক অবস্থা')
+                                ->badge()
+                                ->formatStateUsing(fn (?string $state): string => match ($state) {
+                                    'residential' => 'আবাসিক',
+                                    'non_residential' => 'অনাবাসিক',
+                                    default => '-',
+                                })
+                                ->color(fn (?string $state): string => $state === 'residential' ? 'success' : 'warning'),
+
+                            Infolists\Components\TextEntry::make('blood_group')
+                                ->label('রক্তের গ্রুপ')
+                                ->placeholder('উল্লেখ নেই'),
+                        ]),
+
+                        Infolists\Components\Group::make([
+                            Infolists\Components\TextEntry::make('parent.name')
+                                ->label('অভিভাবকের নাম')
+                                ->placeholder('উল্লেখ নেই'),
+
+                            Infolists\Components\TextEntry::make('parent.phone')
+                                ->label('অভিভাবকের মোবাইল')
+                                ->icon('heroicon-m-phone')
+                                ->placeholder('উল্লেখ নেই'),
+
+                            Infolists\Components\TextEntry::make('rfid_card_number')
+                                ->label('RFID কার্ড নম্বর')
+                                ->placeholder('নেই'),
+                        ]),
+                    ]),
+
+                Infolists\Components\Section::make('সার্বিক মূল্যায়ন সারাংশ (রেজাল্ট, হাজিরা ও ফি)')
+                    ->schema([
+                        Infolists\Components\TextEntry::make('student_360_summary')
+                            ->label('')
+                            ->state(function (Student $record): HtmlString {
+                                $setting = ExamGradingSetting::activeSetting();
+
+                                // ১. পরীক্ষার সারাংশ
+                                $results = $record->examResults()->get();
+                                $obtained = round((float) $results->sum('total_marks'), 2);
+                                $full = round((float) $results->sum('full_marks'), 2);
+                                $pct = $full > 0 ? round(($obtained / $full) * 100, 2) : 0;
+                                $avgGpa = $results->count() > 0 ? round((float) $results->avg('gpa'), 2) : 0;
+
+                                if ($results->isEmpty()) {
+                                    $examHeadline = 'এখনো রেজাল্ট নেই';
+                                    $examSub = 'পরীক্ষার নম্বর যুক্ত হলে এখানে দেখাবে';
+                                } else {
+                                    [$overallGrade, , $status] = $setting->evaluateByPercentage(
+                                        $obtained,
+                                        $pct,
+                                        (float) $results->sum('pass_marks')
+                                    );
+                                    $hasFail = $results->contains(fn ($r) => $r->result_status === 'failed');
+                                    if ($setting->fail_on_any_subject && $hasFail) {
+                                        $overallGrade = $setting->grading_mode === 'school' ? 'F' : 'রাসিব';
+                                        $status = 'failed';
+                                    }
+                                    $statusText = $status === 'passed' ? 'উত্তীর্ণ' : 'অনুত্তীর্ণ';
+                                    $examHeadline = "{$overallGrade} ({$statusText})";
+                                    $examSub = "মোট: {$obtained} / {$full} ({$pct}%) · গড় GPA: {$avgGpa}";
+                                }
+
+                                // ২. হাজিরার সারাংশ
+                                $attendances = $record->attendances()->get();
+                                $totalDays = $attendances->count();
+                                $presentDays = $attendances->where('status', 'present')->count();
+                                $attRate = $totalDays > 0 ? round(($presentDays / $totalDays) * 100, 1) : 0;
+                                $attHeadline = $totalDays > 0 ? "{$attRate}% উপস্থিতি" : 'হাজিরার তথ্য নেই';
+                                $attSub = "মোট {$totalDays} দিনের মধ্যে {$presentDays} দিন উপস্থিত";
+
+                                // ৩. ফি ও বকেয়া সারাংশ
+                                $fees = $record->fees()->get();
+                                $feeColumns = Schema::hasTable('fees') ? Schema::getColumnListing('fees') : [];
+                                $amountCol = collect(['paid_amount', 'amount', 'total_amount'])->first(fn ($c) => in_array($c, $feeColumns, true));
+                                $dueCol = collect(['due_amount', 'due'])->first(fn ($c) => in_array($c, $feeColumns, true));
+
+                                $paidSum = $amountCol ? round((float) $fees->sum($amountCol), 2) : 0;
+                                $dueSum = $dueCol ? round((float) $fees->sum($dueCol), 2) : 0;
+                                $feeHeadline = "পরিশোধিত: ৳{$paidSum}";
+                                $feeSub = $dueCol ? "বকেয়া: ৳{$dueSum} (মোট {$fees->count()} টি রশিদ)" : "মোট {$fees->count()} টি ফি রেকর্ড";
+
+                                return new HtmlString("
+                                    <div style='display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;width:100%;'>
+                                        <div style='padding:16px;border-radius:12px;border:1px solid rgba(34,197,94,0.35);background:rgba(34,197,94,0.08);'>
+                                            <div style='font-size:12px;opacity:0.8;'>পড়ালেখা ও পরীক্ষার ফলাফল</div>
+                                            <div style='font-size:20px;font-weight:800;margin-top:4px;color:#22c55e;'>{$examHeadline}</div>
+                                            <div style='font-size:12px;margin-top:4px;opacity:0.85;'>{$examSub}</div>
+                                        </div>
+
+                                        <div style='padding:16px;border-radius:12px;border:1px solid rgba(59,130,246,0.35);background:rgba(59,130,246,0.08);'>
+                                            <div style='font-size:12px;opacity:0.8;'>হাজিরা ও উপস্থিতির অবস্থা</div>
+                                            <div style='font-size:20px;font-weight:800;margin-top:4px;color:#3b82f6;'>{$attHeadline}</div>
+                                            <div style='font-size:12px;margin-top:4px;opacity:0.85;'>{$attSub}</div>
+                                        </div>
+
+                                        <div style='padding:16px;border-radius:12px;border:1px solid rgba(245,158,11,0.35);background:rgba(245,158,11,0.08);'>
+                                            <div style='font-size:12px;opacity:0.8;'>ফি ও আর্থিক লেনদেন</div>
+                                            <div style='font-size:20px;font-weight:800;margin-top:4px;color:#f59e0b;'>{$feeHeadline}</div>
+                                            <div style='font-size:12px;margin-top:4px;opacity:0.85;'>{$feeSub}</div>
+                                        </div>
+                                    </div>
+                                ");
+                            }),
+                    ]),
+            ]);
+    }
+
     public static function table(Table $table): Table
     {
         return $table
+            ->recordUrl(fn (Student $record): string => static::getUrl('view', ['record' => $record]))
             ->columns([
                 Tables\Columns\TextColumn::make('roll_number')
                     ->label('রোল')
@@ -317,7 +465,7 @@ class StudentResource extends Resource
                     ]),
             ])
             ->actions([
-                Tables\Actions\ViewAction::make()->color('info'),
+                Tables\Actions\ViewAction::make()->label('বিস্তারিত')->color('info'),
                 Tables\Actions\EditAction::make()->color('warning'),
                 Tables\Actions\DeleteAction::make(),
             ])
@@ -343,6 +491,7 @@ class StudentResource extends Resource
         return [
             'index' => Pages\ListStudents::route('/index'),
             'create' => Pages\CreateStudent::route('/create'),
+            'view' => Pages\ViewStudent::route('/{record}'),
             'edit' => Pages\EditStudent::route('/{record}/edit'),
         ];
     }

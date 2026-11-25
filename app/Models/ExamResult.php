@@ -39,43 +39,35 @@ class ExamResult extends Model
     protected static function booted(): void
     {
         static::saving(function (ExamResult $result) {
+            $setting = ExamGradingSetting::activeSetting();
+            $includeOral = (bool) ($setting->include_oral ?? true);
+
             $written = (float) ($result->written_marks ?? 0);
-            $oral = (float) ($result->oral_marks ?? 0);
+            $oral = $includeOral ? (float) ($result->oral_marks ?? 0) : 0.0;
             $fullMarks = (float) ($result->full_marks ?: 100);
             $passMarks = (float) ($result->pass_marks ?: 33);
+
+            $result->oral_marks = round($oral, 2);
+
+            if (($result->result_status ?? 'passed') === 'absent') {
+                $result->total_marks = 0;
+                $result->percentage = 0;
+                $result->grade = 'অনুপস্থিত';
+                $result->gpa = 0.00;
+                return;
+            }
 
             $total = round($written + $oral, 2);
             $percentage = $fullMarks > 0 ? round(($total / $fullMarks) * 100, 2) : 0;
 
-            [$grade, $gpa, $status] = self::evaluateGrade($total, $percentage, $passMarks);
+            [$grade, $gpa, $status] = $setting->evaluateByPercentage($total, $percentage, $passMarks);
 
             $result->total_marks = $total;
             $result->percentage = $percentage;
-            $result->grade = $result->grade ?: $grade;
+            $result->grade = $grade;
             $result->gpa = $gpa;
             $result->result_status = $status;
         });
-    }
-
-    /**
-     * শতকরা ও পাস নম্বর অনুযায়ী গ্রেড, GPA এবং ফলাফল স্ট্যাটাস নির্ণয়
-     *
-     * @return array{0: string, 1: float, 2: string}
-     */
-    public static function evaluateGrade(float $total, float $percentage, float $passMarks): array
-    {
-        if ($total < $passMarks || $percentage < 33) {
-            return ['F', 0.00, 'failed'];
-        }
-
-        return match (true) {
-            $percentage >= 80 => ['A+', 5.00, 'passed'],
-            $percentage >= 70 => ['A', 4.00, 'passed'],
-            $percentage >= 60 => ['A-', 3.50, 'passed'],
-            $percentage >= 50 => ['B', 3.00, 'passed'],
-            $percentage >= 40 => ['C', 2.00, 'passed'],
-            default => ['D', 1.00, 'passed'],
-        };
     }
 
     public function student(): BelongsTo
