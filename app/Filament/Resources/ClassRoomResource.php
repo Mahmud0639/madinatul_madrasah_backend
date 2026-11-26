@@ -15,10 +15,11 @@ class ClassRoomResource extends Resource
     protected static ?string $model = MadrasahClass::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-academic-cap';
-    protected static ?string $navigationGroup = 'একাডেমিক ম্যানেজমেন্ট';
-    protected static ?string $navigationLabel = 'ক্লাস ম্যানেজমেন্ট';
+    protected static ?string $navigationGroup = 'একাডেমিক ও পাঠদান';
+    protected static ?string $navigationLabel = 'ক্লাস রুম';
     protected static ?string $pluralModelLabel = 'ক্লাসসমূহ';
     protected static ?string $modelLabel = 'ক্লাস';
+    protected static ?int $navigationSort = 3;
 
     public static function form(Form $form): Form
     {

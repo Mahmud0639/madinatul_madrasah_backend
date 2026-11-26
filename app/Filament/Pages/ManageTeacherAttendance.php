@@ -16,6 +16,10 @@ class ManageTeacherAttendance extends Page implements HasForms
 
     protected static ?string $navigationIcon = 'heroicon-o-user-group';
     protected static ?string $navigationLabel = 'শিক্ষকদের দৈনিক হাজিরা রিপোর্ট';
+
+    protected static ?string $navigationGroup = 'হাজিরা ব্যবস্থাপনা';
+
+    protected static ?int $navigationSort = 1;
     protected static ?string $slug = 'teacher-attendance-report';
     protected static string $view = 'filament.pages.manage-teacher-attendance';
 

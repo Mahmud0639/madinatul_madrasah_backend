@@ -25,8 +25,8 @@ class DailyLessonResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-book-open';
     protected static ?string $navigationLabel = 'দৈনিক পড়া (Lesson)';
     protected static ?string $pluralModelLabel = 'দৈনিক পড়াসমূহ';
-    protected static ?string $navigationGroup = 'একাডেমিক ম্যানেজমেন্ট';
-    protected static ?int $navigationSort = 4;
+    protected static ?string $navigationGroup = 'একাডেমিক ও পাঠদান';
+    protected static ?int $navigationSort = 6;
 
     public static function form(Form $form): Form
     {

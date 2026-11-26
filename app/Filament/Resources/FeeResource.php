@@ -17,6 +17,8 @@ class FeeResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-banknotes';
     protected static ?string $navigationLabel = 'ফি ও বেতন';
     protected static ?string $pluralModelLabel = 'ফি ও বেতন তালিকা';
+    protected static ?string $navigationGroup = 'হিসাব ও ফাইন্যান্স';
+    protected static ?int $navigationSort = 1;
 
     public static function form(Form $form): Form
     {

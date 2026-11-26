@@ -14,6 +14,7 @@ use Carbon\Carbon;
 class AttendancesRelationManager extends RelationManager
 {
     protected static string $relationship = 'attendances';
+    protected static ?string $title = 'হাজিরা তালিকা';
 
     public function form(Form $form): Form
     {

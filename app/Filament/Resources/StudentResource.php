@@ -27,7 +27,7 @@ class StudentResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-academic-cap';
     protected static ?string $navigationLabel = 'ছাত্র-ছাত্রী ব্যবস্থাপনা';
     protected static ?string $pluralModelLabel = 'ছাত্র-ছাত্রীবৃন্দ';
-    protected static ?string $navigationGroup = 'একাডেমিক ম্যানেজমেন্ট';
+    protected static ?string $navigationGroup = 'শিক্ষার্থী ও ভর্তি';
     protected static ?int $navigationSort = 1;
 
     protected static ?string $recordTitleAttribute = 'roll_number';
@@ -239,7 +239,7 @@ class StudentResource extends Resource
             ]);
     }
 
-    public static function infolist(Infolist $infolist): Infolist
+ public static function infolist(Infolist $infolist): Infolist
     {
         return $infolist
             ->schema([
@@ -305,79 +305,232 @@ class StudentResource extends Resource
                         ]),
                     ]),
 
-                Infolists\Components\Section::make('সার্বিক মূল্যায়ন সারাংশ (রেজাল্ট, হাজিরা ও ফি)')
+                Infolists\Components\Grid::make(3)
                     ->schema([
-                        Infolists\Components\TextEntry::make('student_360_summary')
-                            ->label('')
-                            ->state(function (Student $record): HtmlString {
-                                $setting = ExamGradingSetting::activeSetting();
+                        // কার্ড ১: পড়ালেখা ও পরীক্ষার ফলাফল
+                        Infolists\Components\Section::make('পড়ালেখা ও পরীক্ষার ফলাফল')
+                            ->icon('heroicon-o-academic-cap')
+                            ->columnSpan(1)
+                            ->extraAttributes(['class' => 'h-full'])
+                            ->schema([
+                                Infolists\Components\TextEntry::make('exam_summary_card')
+                                    ->label('')
+                                    ->state(function (Student $record): HtmlString {
+                                        $setting = ExamGradingSetting::activeSetting();
+                                        $results = $record->examResults()->get();
 
-                                // ১. পরীক্ষার সারাংশ
-                                $results = $record->examResults()->get();
-                                $obtained = round((float) $results->sum('total_marks'), 2);
-                                $full = round((float) $results->sum('full_marks'), 2);
-                                $pct = $full > 0 ? round(($obtained / $full) * 100, 2) : 0;
-                                $avgGpa = $results->count() > 0 ? round((float) $results->avg('gpa'), 2) : 0;
+                                        if ($results->isEmpty()) {
+                                            return new HtmlString("
+                                                <div style='min-height:84px;display:flex;flex-direction:column;justify-content:center;'>
+                                                    <div style='font-size:18px;font-weight:700;color:#9ca3af;'>এখনো রেজাল্ট নেই</div>
+                                                    <div style='font-size:12px;opacity:0.75;margin-top:4px;'>পরীক্ষার নম্বর যুক্ত হলে এখানে সারসংক্ষেপ দেখাবে</div>
+                                                </div>
+                                            ");
+                                        }
+
+                                        $obtained = round((float) $results->sum('total_marks'), 2);
+                                        $full = round((float) $results->sum('full_marks'), 2);
+                                        $pct = $full > 0 ? round(($obtained / $full) * 100, 2) : 0;
+                                        $avgGpa = round((float) $results->avg('gpa'), 2);
+
+                                        [$overallGrade, , $status] = $setting->evaluateByPercentage(
+                                            $obtained,
+                                            $pct,
+                                            (float) $results->sum('pass_marks')
+                                        );
+
+                                        $hasFail = $results->contains(fn ($r) => $r->result_status === 'failed');
+                                        if ($setting->fail_on_any_subject && $hasFail) {
+                                            $overallGrade = $setting->grading_mode === 'school' ? 'F' : 'রাসিব';
+                                            $status = 'failed';
+                                        }
+
+                                        $isPassed = $status === 'passed';
+                                        $color = $isPassed ? '#22c55e' : '#ef4444';
+                                        $statusText = $isPassed ? 'উত্তীর্ণ' : 'অনুত্তীর্ণ';
+
+                                        return new HtmlString("
+                                            <div style='min-height:84px;display:flex;flex-direction:column;justify-content:center;'>
+                                                <div style='font-size:22px;font-weight:800;color:{$color};'>{$overallGrade} ({$statusText})</div>
+                                                <div style='font-size:13px;margin-top:6px;opacity:0.9;'>মোট নম্বর: <strong>{$obtained} / {$full}</strong> ({$pct}%)</div>
+                                                <div style='font-size:12px;margin-top:3px;opacity:0.75;'>গড় GPA: <strong>{$avgGpa}</strong> · মোট {$results->count()} টি বিষয়</div>
+                                            </div>
+                                        ");
+                                    }),
+                            ]),
+
+                        // কার্ড ২: হাজিরা ও উপস্থিতির অবস্থা
+                        Infolists\Components\Section::make('হাজিরা ও উপস্থিতির অবস্থা')
+                            ->icon('heroicon-o-calendar-days')
+                            ->columnSpan(1)
+                            ->extraAttributes(['class' => 'h-full'])
+                            ->schema([
+                                Infolists\Components\TextEntry::make('attendance_summary_card')
+                                    ->label('')
+                                    ->state(function (Student $record): HtmlString {
+                                        $attendances = $record->attendances()->latest('id')->get();
+                                        $totalDays = $attendances->count();
+                                        $presentDays = $attendances->where('status', 'present')->count();
+                                        $absentDays = $attendances->where('status', 'absent')->count();
+                                        $attRate = $totalDays > 0 ? round(($presentDays / $totalDays) * 100, 1) : 0;
+
+                                        $headline = $totalDays > 0 ? "{$attRate}% উপস্থিতি" : 'হাজিরার তথ্য নেই';
+                                        $lastDate = $attendances->first()?->date ?? $attendances->first()?->created_at?->format('d M, Y') ?? 'তারিখ নেই';
+
+                                        return new HtmlString("
+                                            <div style='min-height:84px;display:flex;flex-direction:column;justify-content:center;'>
+                                                <div style='font-size:22px;font-weight:800;color:#3b82f6;'>{$headline}</div>
+                                                <div style='font-size:13px;margin-top:6px;opacity:0.9;'>উপস্থিত: <strong>{$presentDays} দিন</strong> · অনুপস্থিত: <strong>{$absentDays} দিন</strong></div>
+                                                <div style='font-size:12px;margin-top:3px;opacity:0.75;'>সর্বশেষ আপডেট: {$lastDate}</div>
+                                            </div>
+                                        ");
+                                    }),
+                            ]),
+
+                        // কার্ড ৩: ফি ও বকেয়া হিসাব
+                        Infolists\Components\Section::make('ফি ও বকেয়া হিসাব')
+                            ->icon('heroicon-o-banknotes')
+                            ->columnSpan(1)
+                            ->extraAttributes(['class' => 'h-full'])
+                            ->schema([
+                                Infolists\Components\TextEntry::make('fee_summary_card')
+                                    ->label('')
+                                    ->state(function (Student $record): HtmlString {
+                                        $fees = $record->fees()->get();
+
+                                        if ($fees->isEmpty()) {
+                                            return new HtmlString("
+                                                <div style='min-height:84px;display:flex;flex-direction:column;justify-content:center;'>
+                                                    <div style='font-size:18px;font-weight:700;color:#f59e0b;'>কোনো ফি রেকর্ড নেই</div>
+                                                    <div style='font-size:12px;opacity:0.75;margin-top:4px;'>নিচের ফি ট্যাব থেকে মাসিক ফি যুক্ত করুন</div>
+                                                </div>
+                                            ");
+                                        }
+
+                                        $feeColumns = Schema::hasTable('fees') ? Schema::getColumnListing('fees') : [];
+                                        $paidCol = collect(['paid_amount', 'amount', 'total_amount'])->first(fn ($c) => in_array($c, $feeColumns, true));
+                                        $dueCol = collect(['due_amount', 'due'])->first(fn ($c) => in_array($c, $feeColumns, true));
+
+                                        $paidSum = round((float) $fees->sum('paid_amount'), 2);
+                                        $dueSum = round((float) $fees->sum(fn ($f) => max(0, (float) $f->amount - (float) $f->paid_amount)), 2);
+                                        $dueColor = $dueSum > 0 ? '#ef4444' : '#22c55e';
+
+                                        return new HtmlString("
+                                            <div style='min-height:84px;display:flex;flex-direction:column;justify-content:center;'>
+                                                <div style='font-size:22px;font-weight:800;color:#f59e0b;'>পরিশোধিত: ৳{$paidSum}</div>
+                                                <div style='font-size:13px;margin-top:6px;color:{$dueColor};font-weight:700;'>মোট বকেয়া (Due): ৳{$dueSum}</div>
+                                                <div style='font-size:12px;margin-top:3px;opacity:0.75;'>মোট {$fees->count()} টি ফি লেনদেন</div>
+                                            </div>
+                                        ");
+                                    }),
+                            ]),
+                    ]),
+
+                Infolists\Components\Section::make('পড়াশোনার অগ্রগতি কার্ভ, তারিখভিত্তিক অবস্থা ও শিক্ষকদের মন্তব্য')
+                    ->description('পরীক্ষা ও বিষয়ভিত্তিক অগ্রগতির গ্রাফ এবং উস্তাদদের সর্বশেষ মূল্যায়ন মন্তব্য')
+                    ->columns(2)
+                    ->schema([
+                        Infolists\Components\TextEntry::make('study_progress_curve')
+                            ->label('পড়াশোনার অগ্রগতির কার্ভ (%)')
+                            ->state(function (Student $record): HtmlString {
+                                $results = $record->examResults()->orderBy('id')->get();
 
                                 if ($results->isEmpty()) {
-                                    $examHeadline = 'এখনো রেজাল্ট নেই';
-                                    $examSub = 'পরীক্ষার নম্বর যুক্ত হলে এখানে দেখাবে';
-                                } else {
-                                    [$overallGrade, , $status] = $setting->evaluateByPercentage(
-                                        $obtained,
-                                        $pct,
-                                        (float) $results->sum('pass_marks')
-                                    );
-                                    $hasFail = $results->contains(fn ($r) => $r->result_status === 'failed');
-                                    if ($setting->fail_on_any_subject && $hasFail) {
-                                        $overallGrade = $setting->grading_mode === 'school' ? 'F' : 'রাসিব';
-                                        $status = 'failed';
-                                    }
-                                    $statusText = $status === 'passed' ? 'উত্তীর্ণ' : 'অনুত্তীর্ণ';
-                                    $examHeadline = "{$overallGrade} ({$statusText})";
-                                    $examSub = "মোট: {$obtained} / {$full} ({$pct}%) · গড় GPA: {$avgGpa}";
+                                    return new HtmlString("<div style='padding:16px;border-radius:10px;border:1px dashed rgba(156,163,175,0.3);opacity:0.75;'>গ্রাফ দেখানোর জন্য এখনো কোনো পরীক্ষার নম্বর যুক্ত হয়নি।</div>");
                                 }
 
-                                // ২. হাজিরার সারাংশ
-                                $attendances = $record->attendances()->get();
-                                $totalDays = $attendances->count();
-                                $presentDays = $attendances->where('status', 'present')->count();
-                                $attRate = $totalDays > 0 ? round(($presentDays / $totalDays) * 100, 1) : 0;
-                                $attHeadline = $totalDays > 0 ? "{$attRate}% উপস্থিতি" : 'হাজিরার তথ্য নেই';
-                                $attSub = "মোট {$totalDays} দিনের মধ্যে {$presentDays} দিন উপস্থিত";
+                                $points = $results->values()->map(function ($r, $idx) {
+                                    $fullTitle = (string) $r->subject_name;
+                                    $shortCode = preg_match('/\(([^)]+)\)/', $fullTitle, $m) ? $m[1] : ('বি-' . ($idx + 1));
 
-                                // ৩. ফি ও বকেয়া সারাংশ
-                                $fees = $record->fees()->get();
-                                $feeColumns = Schema::hasTable('fees') ? Schema::getColumnListing('fees') : [];
-                                $amountCol = collect(['paid_amount', 'amount', 'total_amount'])->first(fn ($c) => in_array($c, $feeColumns, true));
-                                $dueCol = collect(['due_amount', 'due'])->first(fn ($c) => in_array($c, $feeColumns, true));
+                                    return [
+                                        'code' => mb_substr($shortCode, 0, 8),
+                                        'title' => $fullTitle,
+                                        'pct' => min(100, max(0, (float) $r->percentage)),
+                                        'grade' => (string) $r->grade,
+                                    ];
+                                });
 
-                                $paidSum = $amountCol ? round((float) $fees->sum($amountCol), 2) : 0;
-                                $dueSum = $dueCol ? round((float) $fees->sum($dueCol), 2) : 0;
-                                $feeHeadline = "পরিশোধিত: ৳{$paidSum}";
-                                $feeSub = $dueCol ? "বকেয়া: ৳{$dueSum} (মোট {$fees->count()} টি রশিদ)" : "মোট {$fees->count()} টি ফি রেকর্ড";
+                                $width = 480;
+                                $height = 175;
+                                $padX = 36;
+                                $padY = 26;
+                                $count = $points->count();
+                                $stepX = $count > 1 ? ($width - 2 * $padX) / ($count - 1) : 0;
+
+                                $coords = [];
+                                $circles = '';
+                                $labels = '';
+
+                                foreach ($points as $i => $pt) {
+                                    $x = $count > 1 ? round($padX + ($i * $stepX), 1) : ($width / 2);
+                                    $y = round(($height - $padY) - (($pt['pct'] / 100) * ($height - 2 * $padY)), 1);
+                                    $coords[] = "{$x},{$y}";
+
+                                    $circles .= "<circle cx='{$x}' cy='{$y}' r='4.5' fill='#f59e0b' stroke='#111827' stroke-width='1.5' />";
+                                    $circles .= "<text x='{$x}' y='" . max(12, $y - 9) . "' fill='#fbbf24' font-size='10' font-weight='700' text-anchor='middle'>{$pt['pct']}%</text>";
+                                    $labels .= "<text x='{$x}' y='" . ($height - 5) . "' fill='#9ca3af' font-size='10' text-anchor='middle'>{$pt['code']}</text>";
+                                }
+
+                                $polyline = implode(' ', $coords);
+
+                                $legendHtml = $points->map(function ($pt) {
+                                    return "<span style='display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:6px;background:rgba(255,255,255,0.05);font-size:11px;white-space:nowrap;'>"
+                                        . "<strong style='color:#f59e0b;'>{$pt['code']}:</strong> "
+                                        . "<span>" . e($pt['title']) . "</span> "
+                                        . "<span style='opacity:0.75;'>({$pt['grade']})</span>"
+                                        . "</span>";
+                                })->implode('');
 
                                 return new HtmlString("
-                                    <div style='display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;width:100%;'>
-                                        <div style='padding:16px;border-radius:12px;border:1px solid rgba(34,197,94,0.35);background:rgba(34,197,94,0.08);'>
-                                            <div style='font-size:12px;opacity:0.8;'>পড়ালেখা ও পরীক্ষার ফলাফল</div>
-                                            <div style='font-size:20px;font-weight:800;margin-top:4px;color:#22c55e;'>{$examHeadline}</div>
-                                            <div style='font-size:12px;margin-top:4px;opacity:0.85;'>{$examSub}</div>
-                                        </div>
-
-                                        <div style='padding:16px;border-radius:12px;border:1px solid rgba(59,130,246,0.35);background:rgba(59,130,246,0.08);'>
-                                            <div style='font-size:12px;opacity:0.8;'>হাজিরা ও উপস্থিতির অবস্থা</div>
-                                            <div style='font-size:20px;font-weight:800;margin-top:4px;color:#3b82f6;'>{$attHeadline}</div>
-                                            <div style='font-size:12px;margin-top:4px;opacity:0.85;'>{$attSub}</div>
-                                        </div>
-
-                                        <div style='padding:16px;border-radius:12px;border:1px solid rgba(245,158,11,0.35);background:rgba(245,158,11,0.08);'>
-                                            <div style='font-size:12px;opacity:0.8;'>ফি ও আর্থিক লেনদেন</div>
-                                            <div style='font-size:20px;font-weight:800;margin-top:4px;color:#f59e0b;'>{$feeHeadline}</div>
-                                            <div style='font-size:12px;margin-top:4px;opacity:0.85;'>{$feeSub}</div>
+                                    <div style='padding:12px;border-radius:12px;border:1px solid rgba(156,163,175,0.2);background:rgba(156,163,175,0.04);'>
+                                        <svg viewBox='0 0 {$width} {$height}' style='width:100%;height:auto;overflow:visible;'>
+                                            <line x1='{$padX}' y1='" . ($height - $padY) . "' x2='" . ($width - $padX) . "' y2='" . ($height - $padY) . "' stroke='rgba(156,163,175,0.3)' stroke-width='1' />
+                                            <line x1='{$padX}' y1='{$padY}' x2='" . ($width - $padX) . "' y2='{$padY}' stroke='rgba(156,163,175,0.15)' stroke-dasharray='4 4' stroke-width='1' />
+                                            <polyline fill='none' stroke='#f59e0b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round' points='{$polyline}' />
+                                            {$circles}
+                                            {$labels}
+                                        </svg>
+                                        <div style='display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;'>
+                                            {$legendHtml}
                                         </div>
                                     </div>
                                 ");
+                            }),
+
+                        Infolists\Components\TextEntry::make('teacher_remarks_timeline')
+                            ->label('তারিখ অনুযায়ী শিক্ষকদের মন্তব্য ও পর্যবেক্ষণ')
+                            ->state(function (Student $record): HtmlString {
+                                $remarksList = $record->examResults()
+                                    ->whereNotNull('remarks')
+                                    ->where('remarks', '!=', '')
+                                    ->latest('id')
+                                    ->take(5)
+                                    ->get();
+
+                                if ($remarksList->isEmpty()) {
+                                    return new HtmlString("<div style='padding:16px;border-radius:10px;border:1px dashed rgba(156,163,175,0.3);opacity:0.75;'>এখনো কোনো শিক্ষকের মন্তব্য পাওয়া যায়নি। রেজাল্ট এন্ট্রির সময় মন্তব্য লিখলে এখানে তারিখসহ দেখাবে।</div>");
+                                }
+
+                                $itemsHtml = $remarksList->map(function ($item) {
+                                    $date = $item->created_at?->format('d M, Y') ?? 'তারিখ নেই';
+                                    $subject = e($item->subject_name);
+                                    $exam = e($item->exam_name);
+                                    $remark = e($item->remarks);
+                                    $grade = e($item->grade);
+
+                                    return "
+                                        <div style='padding:10px 12px;border-radius:10px;border-left:3px solid #f59e0b;background:rgba(245,158,11,0.07);margin-bottom:8px;'>
+                                            <div style='display:flex;justify-content:space-between;font-size:11.5px;opacity:0.8;'>
+                                                <span><strong>{$subject}</strong> · {$exam} ({$grade})</span>
+                                                <span>📅 {$date}</span>
+                                            </div>
+                                            <div style='font-size:13px;margin-top:4px;font-weight:500;'>“{$remark}”</div>
+                                        </div>
+                                    ";
+                                })->implode('');
+
+                                return new HtmlString("<div>{$itemsHtml}</div>");
                             }),
                     ]),
             ]);

@@ -18,8 +18,8 @@ class LessonTemplateResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-document-duplicate';
     protected static ?string $navigationLabel = 'পড়ার টেমপ্লেটসমূহ';
     protected static ?string $pluralModelLabel = 'পড়ার টেমপ্লেট';
-    protected static ?string $navigationGroup = 'একাডেমিক ম্যানেজমেন্ট';
-    protected static ?int $navigationSort = 5;
+    protected static ?string $navigationGroup = 'একাডেমিক ও পাঠদান';
+    protected static ?int $navigationSort = 7;
 
     public static function form(Form $form): Form
     {

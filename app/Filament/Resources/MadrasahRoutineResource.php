@@ -20,8 +20,8 @@ class MadrasahRoutineResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-calendar-days';
     protected static ?string $navigationLabel = 'ক্লাস রুটিন ও সময়সূচি';
     protected static ?string $pluralModelLabel = 'ক্লাস রুটিনসমূহ';
-    protected static ?string $navigationGroup = 'একাডেমিক ম্যানেজমেন্ট';
-    protected static ?int $navigationSort = 3;
+    protected static ?string $navigationGroup = 'একাডেমিক ও পাঠদান';
+    protected static ?int $navigationSort = 5;
 
     public static function form(Form $form): Form
     {

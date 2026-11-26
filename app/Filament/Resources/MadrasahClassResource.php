@@ -18,7 +18,7 @@ class MadrasahClassResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
     protected static ?string $navigationLabel = 'ক্লাস ব্যবস্থাপনা';
     protected static ?string $pluralModelLabel = 'ক্লাসসমূহ';
-    protected static ?string $navigationGroup = 'একাডেমিক ম্যানেজমেন্ট';
+    protected static ?string $navigationGroup = 'একাডেমিক ও পাঠদান';
     protected static ?int $navigationSort = 2;
 
     public static function form(Form $form): Form

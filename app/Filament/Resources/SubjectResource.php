@@ -15,10 +15,11 @@ class SubjectResource extends Resource
     protected static ?string $model = Subject::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-book-open';
-    protected static ?string $navigationGroup = 'একাডেমিক ম্যানেজমেন্ট';
+    protected static ?string $navigationGroup = 'একাডেমিক ও পাঠদান';
     protected static ?string $navigationLabel = 'বিষয় ও কিতাব';
     protected static ?string $pluralModelLabel = 'বিষয়সমূহ';
     protected static ?string $modelLabel = 'বিষয়';
+    protected static ?int $navigationSort = 4;
 
     public static function form(Form $form): Form
     {

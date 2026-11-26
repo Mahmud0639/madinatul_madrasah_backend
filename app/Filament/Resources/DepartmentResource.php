@@ -15,10 +15,11 @@ class DepartmentResource extends Resource
     protected static ?string $model = Department::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-building-office-2';
-    protected static ?string $navigationGroup = 'একাডেমিক ম্যানেজমেন্ট';
+    protected static ?string $navigationGroup = 'একাডেমিক ও পাঠদান';
     protected static ?string $navigationLabel = 'বিভাগসমূহ (Departments)';
     protected static ?string $pluralModelLabel = 'বিভাগসমূহ';
     protected static ?string $modelLabel = 'বিভাগ';
+    protected static ?int $navigationSort = 1;
 
     public static function form(Form $form): Form
     {

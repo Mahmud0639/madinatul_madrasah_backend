@@ -16,7 +16,9 @@ class AttendanceResource extends Resource
     protected static ?string $model = Attendance::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-clock';
-    protected static ?string $navigationLabel = 'হাজিরা (Attendance)';
+    protected static ?string $navigationLabel = 'ছাত্র-ছাত্রী হাজিরা';
+    protected static ?string $navigationGroup = 'হাজিরা ব্যবস্থাপনা';
+    protected static ?int $navigationSort = 1;
     protected static ?string $slug = 'attendances';
 
     public static function form(Form $form): Form
